@@ -1,0 +1,11 @@
+datasets
+logs
+outputs
+.idea
+.ipynb_checkpoints
+__pycache__/
+
+*.py[cod]
+wandb_api_key.txt
+dev.ipynb
+.devcontainer
