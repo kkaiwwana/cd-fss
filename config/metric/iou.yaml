@@ -1,0 +1,2 @@
+mIoU:
+  _target_: src.metric.iou.mIoU

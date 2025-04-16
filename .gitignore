@@ -1,4 +1,5 @@
 datasets
+weights
 logs
 outputs
 .idea
@@ -9,3 +10,4 @@ __pycache__/
 wandb_api_key.txt
 dev.ipynb
 .devcontainer
+.VSCodeCounter

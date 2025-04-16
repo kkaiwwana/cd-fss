@@ -1,0 +1,2 @@
+ce_loss:
+  _target_: src.loss.ce_based.CrossEntropyLoss

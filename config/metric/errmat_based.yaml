@@ -1,0 +1,2 @@
+error_matrix_based:
+  _target_: src.metric.errmat_based.ErrMatBasedMetrics

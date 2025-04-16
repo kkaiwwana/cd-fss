@@ -1,0 +1,5 @@
+name: tiny_crack
+data_path: datasets/TinyCrack
+n_shot: ???
+limited_num_val: null
+transform: ???
