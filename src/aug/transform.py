@@ -5,8 +5,8 @@ class ResNetAug:
     """normalize image for resnet backbone"""
     def __new__(cls, img_mean, img_std, img_size):
         return transforms.Compose([
-            transforms.Resize(size=(img_size, img_size)),
             transforms.ToTensor(),
+            transforms.Resize(size=(img_size, img_size)),
             transforms.Normalize(img_mean, img_std)
         ])
         

@@ -1,0 +1,58 @@
+defaults:
+  - _self_
+  - dataset: crack_vision_12k
+  - aug: resnet_trans
+  - loss: ce_regular
+  - model: ifa 
+  - metric: 
+      - monitor
+      - iou
+      - errmat_based
+
+loader:
+  # torch Dataloader zone
+  batch_size: 1
+  num_workers: 16
+  persistent_workers: true
+
+  # customized keywords, should be removed if using regular loader
+  train_epoch_splits: 12
+  train_shuffle: true
+
+
+optimizer:
+  name: Adam
+  optimizer_params:
+    lr: 0.00001
+    weight_decay: 0
+
+
+scheduler:
+  name: OneCycleLR
+  scheduler_params:
+    div_factor: 10                                      # starts at lr / 10
+    pct_start: 0.3                                      # reaches lr at 30% of total steps
+    final_div_factor: 10                                # ends at lr / 10 / 10
+    # should addressing from runner level
+    max_lr: ${runner.optimizer.optimizer_params.lr}     
+    epochs: ${runner.trainer.max_epochs}
+    steps_per_epoch: ???
+    cycle_momentum: False
+
+
+trainer:
+  max_epochs: 40
+  log_every_n_steps: 50
+
+  num_nodes: 1
+  devices: -1
+  precision: 32
+
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  check_val_every_n_epoch: 1
+  val_check_interval: 1.0
+  num_sanity_val_steps: 0
+
+tags: 
+  - train

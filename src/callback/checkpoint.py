@@ -24,15 +24,14 @@ class Checkpoint:
     
     def checkpointing(self, metric: dict, model, epoch_idx) -> None:
         if len(self.best_models) < self.topk_model:
-            self.best_models.append((metric[self.monitor], model, epoch_idx))
+            self.best_models.append((metric[self.monitor], epoch_idx))
             self.save_model(model, metric[self.monitor], epoch_idx)
         else:
             current_score = metric[self.monitor]
-            for i, (score, _, idx) in enumerate(self.best_models):
+            for i, (score, idx) in enumerate(self.best_models):
                 if current_score > score:
                     self.remove_model(score, idx)
-                    del list(self.best_models[i])[1]
-                    self.best_models[i] = (current_score, model, epoch_idx)
+                    self.best_models[i] = (current_score, epoch_idx)
                     self.save_model(model, current_score, epoch_idx)
                     break
     

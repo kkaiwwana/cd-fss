@@ -1,3 +1,4 @@
+import torch
 import random
 from torch.utils.data import Sampler
 
@@ -25,3 +26,10 @@ class EpochSubsetSampler(Sampler):
 
     def __len__(self):
         return len(self.epoch_indices[self.epoch % len(self.epoch_indices)])
+    
+
+def interpolate_int_tensor(X, scale_factor):
+    H, W = X.shape[-2:]
+    iw = torch.linspace(0, W-1, int(W * scale_factor)).long()
+    ih = torch.linspace(0, H-1, int(H * scale_factor)).long()
+    return X[:, :, ih[:, None], iw]

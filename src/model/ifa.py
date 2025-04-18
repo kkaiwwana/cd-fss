@@ -40,7 +40,7 @@ class MatchingNetIFA(pl.LightningModule):
         optimizer_cfg: DictConfig,
         scheduler_cfg: DictConfig = None,
         cfg: DictConfig = None,
-        checkpointing: Checkpoint = None
+        checkpointing: Checkpoint = None,
     ):
         super().__init__()
         self.loss_func = loss_func
@@ -62,6 +62,7 @@ class MatchingNetIFA(pl.LightningModule):
         )
         
         self._logger = None
+        self._skip_val_set2 = False
     
     def call_model_train(self, *args, **kwargs):
         """TO-BE-OVERRIDDEN"""
@@ -115,6 +116,9 @@ class MatchingNetIFA(pl.LightningModule):
         return total_loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx):
+        if dataloader_idx == 1 and self._skip_val_set2:
+            return
+        
         img_q, mask_q = batch['query_image'], batch['query_mask']
         img_s_list  = batch['support_images'].unbind(dim=1)
         mask_s_list = batch['support_masks'].unbind(dim=1)
@@ -145,14 +149,16 @@ class MatchingNetIFA(pl.LightningModule):
     def on_train_start(self):
         if self._logger is None:
             self._logger = WanbSyncLogger(run=wandb.run, log_every_n_steps=self.trainer.log_every_n_steps)
+        self._skip_val_set2 = self.trainer.val_dataloaders[0].dataset.__class__ == \
+            self.trainer.val_dataloaders[1].dataset.__class__
     
     def _log_epoch_metrics(self, prefix: str):
         # other metrics do not require dl & model, but they accept kwargs anyway.
-        metrics_to_log = self.metrics_list if prefix == 'val' else self.metrics_list[:1]
+        metrics_to_log = self.metrics_list if (prefix == 'val' and not self._skip_val_set2) else self.metrics_list[:1]
         for i, metrics in enumerate(metrics_to_log):
             res = metrics.compute()
             if prefix == 'val' and i == len(metrics_to_log) - 1:
-                self.checkpointing(res, deepcopy(self).cpu(), self.trainer.current_epoch)
+                self.checkpointing(res, self, self.trainer.current_epoch)
             for metric_name, result in res.items():
                 if result is not None:
                     if isinstance(result, dict):

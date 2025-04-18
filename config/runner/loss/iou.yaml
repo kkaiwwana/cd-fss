@@ -1,0 +1,2 @@
+iou_loss:
+  _target_: src.loss.iou.IoULoss

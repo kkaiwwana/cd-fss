@@ -1,12 +1,20 @@
 name: crack_vision_12k
 data_path: datasets/CrackVision12k
 n_shot: ???
+limited_num_train: null
 limited_num_val: 200
 transform: ???
+paired_aug: null
+visual_aug: null
+deterministic: False
 
 also_val_at:
   name: tiny_crack
   data_path: datasets/TinyCrack
   n_shot: ???
+  limited_num_train: null
   limited_num_val: null
   transform: ???
+  paired_aug: null
+  visual_aug: null
+  deterministic: False

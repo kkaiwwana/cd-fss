@@ -1,38 +1,42 @@
+import logging
+import threading
 from hydra.utils import instantiate
-from omegaconf import DictConfig, open_dict, OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from src.data.dataset import FSSDataset
 from src.loss.utils import MultipleLosses
 from src.metric.utils import SuperMetricCollection
-
 from src.model import MatchingNetIFA
+
+
+log = logging.getLogger(__name__)
 
 
 def setup_dataset(config: DictConfig) -> FSSDataset:
     # convert DictConfig to dict, since transform is not a primitive type. 
-    config.dataset.n_shot = config.experiment.n_shot
-    data_config = OmegaConf.to_container(config.dataset, resolve=True)
-    transform = instantiate(config.aug)
+    config.runner.dataset.n_shot = config.experiment.n_shot
+    data_config = OmegaConf.to_container(config.runner.dataset, resolve=True)
+    transform = instantiate(config.runner.aug)
     data_config.update(transform)
     if 'also_val_at' in data_config.keys() and data_config['also_val_at'] is not None:
         data_config['also_val_at']['n_shot'] = config.experiment.n_shot
         data_config['also_val_at'].update(transform)
-    
-    return FSSDataset(data_config=data_config, loader_config=config.loader)
+        
+    return FSSDataset(data_config=data_config, loader_config=config.runner.loader)
 
 def setup_model(config: DictConfig):
-    loss_func = MultipleLosses(instantiate(config.loss))
+    loss_func = MultipleLosses(instantiate(config.runner.loss))
     metric = SuperMetricCollection(
-        {metric_name: metric for metric_name, metric in instantiate(config.metric).items()})
+        {metric_name: metric for metric_name, metric in instantiate(config.runner.metric).items()})
     checkpointing = instantiate(config.checkpoint)
-    if config.model.name == 'ifa_matching':
+    if config.runner.model.name == 'ifa_matching':
         
         model = MatchingNetIFA(
             loss_func=loss_func,
             metrics=metric,
-            model_cfg=config.model,
-            optimizer_cfg=config.optimizer,
-            scheduler_cfg=config.scheduler,
+            model_cfg=config.runner.model,
+            optimizer_cfg=config.runner.optimizer,
+            scheduler_cfg=config.runner.scheduler,
             cfg=config,
             checkpointing=checkpointing
         )
@@ -40,3 +44,22 @@ def setup_model(config: DictConfig):
         raise NotImplementedError
 
     return model
+
+
+def timeout_input(timeout=5):
+    result = [None]
+
+    def get_input():
+        result[0] = int(input())
+
+    thread = threading.Thread(target=get_input)
+    thread.start()
+    thread.join(timeout)
+
+    if thread.is_alive():
+        log.info("Time out. Select the last one by default.")
+        thread.join(0)
+    return result[0]
+
+
+

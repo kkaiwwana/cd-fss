@@ -1,0 +1,2 @@
+dice_loss:
+  _target_: src.loss.dice.DiceLoss

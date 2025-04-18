@@ -32,9 +32,9 @@ class Visualizer(Metric):
     
     def update(self, logits, target, query_image, *args, **kwargs):
         if self.n_received_images < self.n_images_per_epoch:
-            self.pred_masks.append(logits.argmax(dim=1).detach())
-            self.gt_masks.append(target)
-            self.query_images.append(query_image)
+            self.pred_masks.append(logits.argmax(dim=1).detach()[0])
+            self.gt_masks.append(target[0])
+            self.query_images.append(query_image[0])
             
             self.n_received_images += 1
     

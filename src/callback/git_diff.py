@@ -12,11 +12,11 @@ log = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 TEMPLATE = """
-\n\n
+\n
 ==================================================
 {diff}
 ==================================================
-\n\n
+\n
 """
 
 
@@ -27,9 +27,17 @@ class GitDiffCallback(pl.Callback):
     def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
+        self.diffs_added = False
 
     @rank_zero_only
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         diff = git.Repo(PROJECT_ROOT).git.diff()
 
         log.info(TEMPLATE.format(diff=diff))
+        
+    @rank_zero_only
+    def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningDataModule) -> None:
+        # add diffs after 1 val epoch successfully.
+        if not self.diffs_added:
+            git.Repo(PROJECT_ROOT).git.add(all=True)
+            self.diffs_added = True

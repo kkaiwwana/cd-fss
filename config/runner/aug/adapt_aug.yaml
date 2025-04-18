@@ -1,0 +1,12 @@
+transform:
+  _target_: src.aug.transform.ResNetAug
+  img_size: 1024
+  img_mean: [0.485, 0.456, 0.406]
+  img_std: [0.229, 0.224, 0.225]
+
+paired_aug:
+  _target_: src.aug.augment.PairedSegAug
+  img_size: ${runner.aug.transform.img_size}
+
+visual_aug:
+  _target_: src.aug.augment.VisualSegAug
