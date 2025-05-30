@@ -47,6 +47,7 @@ class SmoothTopkCELoss(CrossEntropyLoss):
         b, h, w = raw_loss.shape
         
         raw_loss = rearrange(raw_loss, 'b h w -> b (h w)')
+        # raw_loss = F.gumbel_softmax(torch.log(raw_loss), dim=-1, tau=0.01)  # pass gradient to unchosen points
         k = int(h * w * self.k_ratio)
         v, idx = torch.topk(raw_loss, k)
         raw_loss = rearrange(raw_loss, 'b (h w) -> b h w', h=h)
@@ -59,6 +60,6 @@ class SmoothTopkCELoss(CrossEntropyLoss):
 
         mask = torch.zeros_like(raw_loss)
         mask[b_idx, h_idx, w_idx] = 1.0
-        soft_mask = self.smoother(mask[:, None])[:, 0]
-        loss = raw_loss * soft_mask
-        return loss.sum() / soft_mask.sum()
+        # soft_mask = self.smoother(mask[:, None])[:, 0]
+        loss = raw_loss * mask # + raw_loss / 5
+        return loss.sum() / mask.sum()

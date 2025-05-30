@@ -2,21 +2,21 @@ defaults:
   - _self_
   - runner: train
 
-experiment:
-  project: crack_cd_fss
-  uuid: ${now:%m%d_%H%M%S}@${experiment.comment}
-  comment: null_comment
-  save_dir: ${hydra:runtime.cwd}/logs/${experiment.uuid}
+exp:
+  project: crack_cd_fss_Final
+  uuid: ${now:%m%d_%H%M%S}@${exp.cmt}
+  cmt: null_comment
+  save_dir: ${hydra:runtime.cwd}/logs/${exp.uuid}
   seed: 2025
   n_shot: 1
 
 hydra:
   run:
-    dir: ${experiment.save_dir}/hydra_output
+    dir: ${exp.save_dir}/hydra_output
 
 checkpoint:
   _target_: src.callback.checkpoint.Checkpoint
-  output_path: ${experiment.save_dir}/checkpoints
-  exp_id: ${experiment.uuid}
+  output_path: ${exp.save_dir}/checkpoints
+  exp_id: ${exp.uuid}
   monitor: mIoU
-  topk_models: 2
+  topk_models: 1

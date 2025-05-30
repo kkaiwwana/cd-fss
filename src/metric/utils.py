@@ -1,11 +1,15 @@
 from torchmetrics import MetricCollection
 from torchmetrics.utilities.data import _flatten_dict
+from pytorch_lightning.utilities import rank_zero_only
 
 
 class SuperMetricCollection(MetricCollection):
     """
     Metric collection that accept any args and kwargs, to support some customized metrics.
     """
+    def update(self, *args, **kwargs):
+        super().update(*args, **kwargs)
+    
     def compute(self, **kwargs):
         """Compute the result for each metric in the collection."""
         return self._compute_and_reduce("compute", **kwargs)

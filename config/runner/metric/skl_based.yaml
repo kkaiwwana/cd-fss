@@ -1,0 +1,3 @@
+skl_based:
+  _target_: src.metric.skl_based.SklBasedMetrics
+  radius: 5

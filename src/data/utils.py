@@ -23,7 +23,6 @@ class EpochSubsetSampler(Sampler):
             rng.shuffle(indices)
         return iter(indices)
         
-
     def __len__(self):
         return len(self.epoch_indices[self.epoch % len(self.epoch_indices)])
     

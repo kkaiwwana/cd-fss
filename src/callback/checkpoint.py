@@ -1,5 +1,6 @@
 import os
 import torch
+from pytorch_lightning.utilities import rank_zero_only
 
 
 class Checkpoint:
@@ -14,12 +15,12 @@ class Checkpoint:
         os.makedirs(self.output_path, exist_ok = True) 
     
     def save_model(self, model, score, epoch_idx=None):
-        name_string = f'{self.exp_id}_epoch:{epoch_idx}_{self.monitor}:{score:.2f}.ckpt'
+        name_string = f'{self.exp_id}_epoch:{epoch_idx}_{self.monitor}:{score:.3f}.ckpt'
 
         torch.save(model.state_dict(), os.path.join(self.output_path, name_string))
     
     def remove_model(self, score, epoch_idx=None):
-        name_string = f'{self.exp_id}_epoch:{epoch_idx}_{self.monitor}:{score:.2f}.ckpt'
+        name_string = f'{self.exp_id}_epoch:{epoch_idx}_{self.monitor}:{score:.3f}.ckpt'
         os.system(f'rm {os.path.join(self.output_path, name_string)}')
     
     def checkpointing(self, metric: dict, model, epoch_idx) -> None:
@@ -35,5 +36,6 @@ class Checkpoint:
                     self.save_model(model, current_score, epoch_idx)
                     break
     
+    @rank_zero_only
     def __call__(self, metric: dict, model, epoch_idx, *args, **kwargs) -> None:
         self.checkpointing(metric=metric, model=model, epoch_idx=epoch_idx)

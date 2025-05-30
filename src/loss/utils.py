@@ -49,7 +49,7 @@ class MaskSmoother(torch.nn.Module):
         
     @staticmethod
     def _normalize(X):
-        return X
+        # return X
         min_val = X.min(dim=(-1), keepdim=True)[0].min(dim=-2, keepdim=True)[0]
         max_val = X.max(dim=(-1), keepdim=True)[0].max(dim=-2, keepdim=True)[0]
         return (X - min_val) / (max_val - min_val)

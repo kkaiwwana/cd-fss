@@ -9,12 +9,16 @@ from torch.utils.data import DataLoader
 
 from src.data.tiny_crack import TinyCrackDS
 from src.data.crack_vision_12k import CrackVision12kDS
+from src.data.edm_crack import EdmCrackDS
+from src.data.crack_seg import CrackSegDS
 from src.data.utils import EpochSubsetSampler
 
 
 REGISTERED_DATASETS = {
     'tiny_crack': TinyCrackDS,
     'crack_vision_12k': CrackVision12kDS,
+    'edm_crack': EdmCrackDS,
+    'crack_seg': CrackSegDS,
 }
 
 
@@ -29,17 +33,13 @@ class FSSDataset(pl.LightningDataModule):
         self.train_shuffle = True
         self.setup()
         
-        if 'train_epoch_splits' in self.loader_config.keys():
-            if self.loader_config.train_epoch_splits is not None:
-                self.batch_sampler = sampler = EpochSubsetSampler(
-                    total_size=len(self.train_set), 
-                    num_splits=self.loader_config.train_epoch_splits, 
-                    shuffle=self.train_shuffle
-                )
-            else: self.batch_sampler = None
-            del self.loader_config.train_epoch_splits
-        else:
-            self.batch_sampler = None
+        if 'train_epoch_splits' in self.loader_config.keys() and self.loader_config.train_epoch_splits is not None:
+            self.batch_sampler = sampler = EpochSubsetSampler(
+                total_size=len(self.train_set), 
+                num_splits=self.loader_config.train_epoch_splits, 
+                shuffle=self.train_shuffle
+            )
+        else: self.batch_sampler = None
 
     def setup(self, stage: str = None):
         self.train_set, self.val_set, self.test_set = REGISTERED_DATASETS[self.data_config['name']](self.data_config)
@@ -53,25 +53,23 @@ class FSSDataset(pl.LightningDataModule):
             
         if 'train_shuffle' in self.loader_config.keys():
             self.train_shuffle = self.loader_config.train_shuffle
-            del self.loader_config.train_shuffle
-            
 
     def train_dataloader(self):
         assert self.train_set is not None
         # split massive train epoch to multiple subsets.
         if self.batch_sampler is not None:
-            loader = DataLoader(self.train_set, **self.loader_config, sampler=self.batch_sampler)
+            loader = DataLoader(self.train_set, **self.loader_config.train_loader_params, sampler=self.batch_sampler)
         else:
-            loader = DataLoader(self.train_set, **self.loader_config, shuffle=self.train_shuffle)
+            loader = DataLoader(self.train_set, **self.loader_config.train_loader_params, shuffle=self.train_shuffle)
         
         return loader
 
     def val_dataloader(self):
         assert self.val_set is not None
         val_loaders = [
-            DataLoader(self.val_set, **self.loader_config, shuffle=False), 
-            DataLoader(self.val_set2, **self.loader_config, shuffle=False)
-        ]    
+            DataLoader(self.val_set, **self.loader_config.val_loader_params, shuffle=False), 
+            DataLoader(self.val_set2, **self.loader_config.val_loader_params, shuffle=False)
+        ]
         return val_loaders
             
 

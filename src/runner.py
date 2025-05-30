@@ -6,7 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.data.dataset import FSSDataset
 from src.loss.utils import MultipleLosses
 from src.metric.utils import SuperMetricCollection
-from src.model import MatchingNetIFA
+from src.model import EncoderOnlySegmenterPL, NaiveSegmenterPL
 
 
 log = logging.getLogger(__name__)
@@ -14,12 +14,12 @@ log = logging.getLogger(__name__)
 
 def setup_dataset(config: DictConfig) -> FSSDataset:
     # convert DictConfig to dict, since transform is not a primitive type. 
-    config.runner.dataset.n_shot = config.experiment.n_shot
+    config.runner.dataset.n_shot = config.exp.n_shot
     data_config = OmegaConf.to_container(config.runner.dataset, resolve=True)
     transform = instantiate(config.runner.aug)
     data_config.update(transform)
     if 'also_val_at' in data_config.keys() and data_config['also_val_at'] is not None:
-        data_config['also_val_at']['n_shot'] = config.experiment.n_shot
+        data_config['also_val_at']['n_shot'] = config.exp.n_shot
         data_config['also_val_at'].update(transform)
         
     return FSSDataset(data_config=data_config, loader_config=config.runner.loader)
@@ -28,10 +28,9 @@ def setup_model(config: DictConfig):
     loss_func = MultipleLosses(instantiate(config.runner.loss))
     metric = SuperMetricCollection(
         {metric_name: metric for metric_name, metric in instantiate(config.runner.metric).items()})
-    checkpointing = instantiate(config.checkpoint)
-    if config.runner.model.name == 'ifa_matching':
-        
-        model = MatchingNetIFA(
+    checkpointing = lambda _: instantiate(config.checkpoint)  # delayed init at rank zero only, for DDP.
+    if config.runner.model.name == 'ours':
+        model = EncoderOnlySegmenterPL(
             loss_func=loss_func,
             metrics=metric,
             model_cfg=config.runner.model,
@@ -40,6 +39,17 @@ def setup_model(config: DictConfig):
             cfg=config,
             checkpointing=checkpointing
         )
+    elif config.runner.model.name == 'naive':
+        model = NaiveSegmenterPL(
+            loss_func=loss_func,
+            metrics=metric,
+            model_cfg=config.runner.model,
+            optimizer_cfg=config.runner.optimizer,
+            scheduler_cfg=config.runner.scheduler,
+            cfg=config,
+            checkpointing=checkpointing
+        )
+        
     else:
         raise NotImplementedError
 

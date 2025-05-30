@@ -1,5 +1,5 @@
 import wandb
-
+from pytorch_lightning.utilities import rank_zero_only
 
 class WanbSyncLogger:
     """Synchronized wandb logger. 
@@ -8,25 +8,29 @@ class WanbSyncLogger:
         self.run = run
         self.log_every_n_steps = log_every_n_steps
         self.cached_data = dict()
-        self.current_step = 1
-        self.old_current_epoch = 1
-        self.current_epoch = 1
+        self.current_step = 0
+        self.old_current_epoch = 0
+        self.current_epoch = 0
         
         self._step_suffix = step_suffix
         self._epoch_suffix = epoch_suffix
 
+    @rank_zero_only
     def add_step(self):
         self.current_step += 1
 
+    @rank_zero_only
     def add_epoch(self):
         self.current_epoch += 1
 
+    @rank_zero_only
     def sync_epoch(self):
         self.old_current_epoch = self.current_epoch
 
+    @rank_zero_only
     def log(self, data: dict, on_step=None, on_epoch=None, step=None):
         if not self.log_every_n_steps or (on_step is None and on_epoch is None):
-            wandb.log(data, step=step)
+            wandb.log(data, step=self.current_step)
             return None
         
         # if k in d, append v， else create [v]
@@ -43,7 +47,7 @@ class WanbSyncLogger:
             # 2. log & 3. reset
             if self.current_step % self.log_every_n_steps == 0:
                 wandb.log({k + self._step_suffix: _list_reducer(self.cached_data[k + self._step_suffix])
-                            for k in data.keys()}, step=step)
+                            for k in data.keys()}, step=self.current_step)
                 for k in data.keys():
                     self.cached_data[k + self._step_suffix] = []
 
@@ -51,7 +55,7 @@ class WanbSyncLogger:
             # on-epoch metrics
             if self.current_epoch != self.old_current_epoch:
                 epoch_keys = list(filter(lambda x: self._epoch_suffix in x, self.cached_data.keys()))
-                wandb.log({k: _list_reducer(self.cached_data[k]) for k in epoch_keys}, step=step)
+                wandb.log({k: _list_reducer(self.cached_data[k]) for k in epoch_keys}, step=self.current_step)
                 for k in epoch_keys:
                     self.cached_data[k] = []
             else:

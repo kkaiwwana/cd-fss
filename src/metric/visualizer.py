@@ -3,7 +3,7 @@ import wandb
 import numpy as np
 from einops import rearrange
 from torchmetrics import Metric
-
+from pytorch_lightning.utilities import rank_zero_only
 
 class Visualizer(Metric):
     

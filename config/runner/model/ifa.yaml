@@ -1,5 +1,0 @@
-name: ifa_matching
-
-backbone: sam_vit_b
-refine: true
-use_auto_extractor: false

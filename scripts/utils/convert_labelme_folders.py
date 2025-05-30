@@ -33,13 +33,21 @@ def filter_dir(root: pathlib.Path, item) -> bool:
     properties = {'label.png', 'img.png', 'label_viz.png', 'label_names.txt'}
     return os.path.isdir(path) and  set(pathlib.os.listdir(path)) == properties
 
+global num_mask, total
+num_mask = 0
+total = 0
 
 def is_null_mask(path, thr=3000) -> bool:
     # mask (h, w) @ uint8 for class representation
     mask = np.array(Image.open(path))
-    print(mask.shape)
-    return (mask > 0).sum() < thr
 
+    if (mask > 0).sum() < thr:
+        return True
+    
+    global num_mask, total
+    num_mask += (mask > 0).sum()
+    total += mask.shape[0] * mask.shape[1]
+    return False
 
 def main():
     args = parse_args()
@@ -74,7 +82,8 @@ def main():
         for folder in folders:
             os.system(f'rm -r {src / folder}')
         log(f'Clean {len(folders)} raw files(folders).')
-        
 
+    log(f'Crack Proportion: {100 * num_mask / total:2f}%.')
+    
 if __name__ == '__main__':
     main()

@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-
+from pytorch_lightning.utilities import rank_zero_only
 
 log = logging.getLogger(__name__)
 
@@ -18,10 +18,10 @@ CONFIG_NAME = 'main'
 WANDB_API_KEY = open('wandb_api_key.txt', mode='r').read()
 
 
-def try_resume_training(experiment):
+def try_resume_training(exp):
     """specify an existing experiment name, them try resume training"""
-    save_dir = Path(experiment.save_dir).resolve().joinpath('../')  # back to top folder
-    checkpoints = list(save_dir.glob(f'**/{experiment.uuid.split('@')[0]}*/checkpoints/*.ckpt'))
+    save_dir = Path(exp.save_dir).resolve().joinpath('../')  # back to top folder
+    checkpoints = list(save_dir.glob(f'**/{exp.uuid.split('@')[0]}*/checkpoints/*.ckpt'))
     
     log.info(f'Searching {save_dir}.')
 
@@ -41,33 +41,31 @@ def try_resume_training(experiment):
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name=CONFIG_NAME)
 def main(config):
-    pl.seed_everything(config.experiment.seed)
-    ckpt_path = try_resume_training(config.experiment)
+    pl.seed_everything(config.exp.seed)
+    ckpt_path = try_resume_training(config.exp)
     
-    Path(config.experiment.save_dir).mkdir(exist_ok=True, parents=True)
+    @rank_zero_only
+    def _make_log():
+        Path(config.exp.save_dir).mkdir(exist_ok=True, parents=True)
 
     dataset = setup_dataset(config)
     # terrible code:( have to compromise.
     config.runner.scheduler.scheduler_params.steps_per_epoch = len(dataset.train_dataloader())
     model = setup_model(config)
-        
+    
     if ckpt_path is None:
-        run_id = config.experiment.uuid 
+        run_id = config.exp.uuid 
     else:
-        model.load_state_dict(torch.load(ckpt_path, weights_only=True), strict=False)
-        run_id = f'{config.experiment.uuid}@Re@{datetime.now().strftime("%m%d_%H%M%S")}@{config.experiment.comment}'
+        print(model.load_state_dict(torch.load(ckpt_path, weights_only=True), strict=False))
+        run_id = f'{config.exp.uuid}@Re@{datetime.now().strftime("%m%d_%H%M%S")}@{config.exp.cmt}'
     
     logger = WandbLogger(
-        project=config.experiment.project,
-        save_dir=config.experiment.save_dir,
+        project=config.exp.project,
+        save_dir=config.exp.save_dir,
         id=run_id,
         log_model=False,
         tags=config.runner.tags,
     )
-    
-    # make training amount invariant to epoch splits
-    if 'train_epoch_splits' in config.runner.loader.keys() and isinstance(config.runner.loader.train_epoch_splits, int):
-        config.runner.trainer.max_epoch *= config.runner.loader.train_epoch_splits
     
     callbacks = [GitDiffCallback(config), ModelCheckpoint(save_top_k=0)]
     # start training
