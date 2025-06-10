@@ -6,7 +6,7 @@ defaults:
   - model: ours
   - metric: 
       - monitor
-      - skl_based
+      # - skl_based
       - iou
       - errmat_based
 
@@ -31,7 +31,7 @@ loader:
 optimizer:
   name: Adam
   optimizer_params:
-    lr: 0.00008
+    lr: 0.000008
     weight_decay: 0
 
 
@@ -61,7 +61,7 @@ trainer:
   num_sanity_val_steps: 0
   check_val_every_n_epoch: ${runner.trainer.accumulate_grad_batches}
 
-  accumulate_grad_batches: 25
+  accumulate_grad_batches: 4
   
 tags:
   - adapt

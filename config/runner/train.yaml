@@ -4,9 +4,9 @@ defaults:
   - aug: resnet_trans
   - loss: ce_regular
   - model: ours
-  - metric: 
+  - metric:
       - monitor
-      - skl_based
+      # - skl_based
       - iou
       - errmat_based
 
@@ -14,7 +14,7 @@ defaults:
 loader:
   # torch Dataloader zone
   train_loader_params:
-    batch_size: 6
+    batch_size: 1
     num_workers: 16
     persistent_workers: True
     
@@ -24,7 +24,7 @@ loader:
     persistent_workers: True
 
   # customized keywords, should be removed if using regular loader
-  train_epoch_splits: 8
+  train_epoch_splits: 16
   train_shuffle: true
 
 
@@ -62,7 +62,7 @@ trainer:
   num_sanity_val_steps: 0
   check_val_every_n_epoch: 1
 
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 2
 
 tags: 
   - train

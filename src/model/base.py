@@ -1,5 +1,6 @@
 import torch
-import wandb
+# import wandb
+import swanlab
 import torchvision
 import pytorch_lightning as pl
 import torch.nn.functional as F
@@ -50,9 +51,6 @@ class BaseSegmenter(pl.LightningModule):
         self.scheduler_cfg = scheduler_cfg
         self.checkpointing = checkpointing
         self.cfg = cfg
-
-        self.save_hyperparameters(
-            cfg, ignore=['loss_func', 'metrics', 'model_cfg', 'optimizer_cfg', 'scheduler_cfg'])
         
         self.model = self.setup_model()
         
@@ -143,7 +141,8 @@ class BaseSegmenter(pl.LightningModule):
     def on_train_start(self):
         self.checkpointing = self.checkpointing(None)  # init checkpointing at rank zero.
         if self._logger is None:
-            self._logger = WanbSyncLogger(run=wandb.run, log_every_n_steps=self.trainer.log_every_n_steps) 
+            # self._logger = WanbSyncLogger(run=wandb.run, log_every_n_steps=self.trainer.log_every_n_steps) 
+            self._logger = WanbSyncLogger(run=swanlab.run, log_every_n_steps=self.trainer.log_every_n_steps) 
     
     def _log_epoch_metrics(self, prefix: str):
         # other metrics do not require dl & model, but they accept kwargs anyway.

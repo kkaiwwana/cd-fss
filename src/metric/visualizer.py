@@ -1,9 +1,11 @@
 import torch
-import wandb
+# import wandb
+import swanlab
 import numpy as np
 from einops import rearrange
 from torchmetrics import Metric
 from pytorch_lightning.utilities import rank_zero_only
+
 
 class Visualizer(Metric):
     
@@ -76,4 +78,5 @@ class Visualizer(Metric):
         
         out_img = np.concatenate([query_row, masks_row, preds_row], axis=0)
         
-        return wandb.Image(out_img)
+        # return wandb.Image(out_img)
+        return swanlab.Image(out_img)

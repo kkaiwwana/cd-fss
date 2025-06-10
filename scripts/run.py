@@ -1,13 +1,15 @@
 import sys
 import hydra
 import torch
-import wandb
+# import wandb
+import swanlab
 import logging
 import pytorch_lightning as pl
 
 from pathlib import Path
 from datetime import datetime
-from pytorch_lightning.loggers import WandbLogger
+# from pytorch_lightning.loggers import WandbLogger
+from swanlab.integration.pytorch_lightning import SwanLabLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities import rank_zero_only
 
@@ -16,7 +18,7 @@ log = logging.getLogger(__name__)
 CONFIG_PATH = str(Path.cwd() / 'config')
 CONFIG_NAME = 'main'
 WANDB_API_KEY = open('wandb_api_key.txt', mode='r').read()
-
+SWANLAB_API_KEY = open('swanlab_api_key.txt', mode='r').read()
 
 def try_resume_training(exp):
     """specify an existing experiment name, them try resume training"""
@@ -59,11 +61,10 @@ def main(config):
         print(model.load_state_dict(torch.load(ckpt_path, weights_only=True), strict=False))
         run_id = f'{config.exp.uuid}@Re@{datetime.now().strftime("%m%d_%H%M%S")}@{config.exp.cmt}'
     
-    logger = WandbLogger(
+    logger = SwanLabLogger(
         project=config.exp.project,
         save_dir=config.exp.save_dir,
-        id=run_id,
-        log_model=False,
+        experiment_name=run_id,
         tags=config.runner.tags,
     )
     
@@ -78,6 +79,7 @@ if __name__ == '__main__':
     from src.runner import setup_model, setup_dataset
     from src.callback.git_diff import GitDiffCallback
     from src.runner import timeout_input
-    wandb.login(key=WANDB_API_KEY)
+    # wandb.login(key=WANDB_API_KEY)
+    swanlab.login(api_key=SWANLAB_API_KEY)
     torch.set_float32_matmul_precision('medium')
     main()

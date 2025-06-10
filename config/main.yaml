@@ -3,7 +3,7 @@ defaults:
   - runner: train
 
 exp:
-  project: crack_cd_fss_Final
+  project: crack_cd_fss_${runner.tags[0]}
   uuid: ${now:%m%d_%H%M%S}@${exp.cmt}
   cmt: null_comment
   save_dir: ${hydra:runtime.cwd}/logs/${exp.uuid}

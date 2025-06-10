@@ -17,7 +17,8 @@ class SklBasedMetrics(Metric):
         self.add_state('tp_gt', [])
         self.add_state('num_pred', [])
         self.add_state('num_gt', [])
-        self.add_state('iou', [])
+        self.add_state('i', torch.tensor([0.0]))
+        self.add_state('u', torch.tensor([1e-8]))
 
         self.radius = radius
         self.dil_structure = np.ones((2 * radius + 1, 2 * radius + 1))
@@ -45,7 +46,8 @@ class SklBasedMetrics(Metric):
             sum([len(p) > 0 for p in gt_match]),
             len(pred_coords),
             len(gt_coords),
-            (pred_dil & gt_dil).sum() / ((pred_dil | gt_dil).sum() + 1e-8),
+            (pred_dil & gt_dil).sum(), 
+            (pred_dil | gt_dil).sum(),
         ]
         out_queue.put(out)
     
@@ -71,12 +73,13 @@ class SklBasedMetrics(Metric):
             p.join()
         
         while not q.empty():
-            tp_pred, tp_gt, num_pred, num_gt, iou = q.get()
+            tp_pred, tp_gt, num_pred, num_gt, i, u = q.get()
             self.tp_pred.append(tp_pred)
             self.tp_gt.append(tp_gt)
             self.num_pred.append(num_pred)
             self.num_gt.append(num_gt)
-            self.iou.append(iou)
+            self.i += i
+            self.u += u
         
     def compute(self, *args, **kwargs):
         if sum(self.num_pred) == 0:
@@ -85,7 +88,7 @@ class SklBasedMetrics(Metric):
         precision = sum(self.tp_pred) / sum(self.num_pred)
         recall = sum(self.tp_gt) / sum(self.num_gt)
         f1_score = 2 * precision * recall / (precision + recall + 1e-8)
-        iou = sum(self.iou) / len(self.iou)
+        iou = self.i / self.u
         
         return dict(
             iou_skl = iou,

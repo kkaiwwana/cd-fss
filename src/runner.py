@@ -6,7 +6,8 @@ from omegaconf import DictConfig, OmegaConf
 from src.data.dataset import FSSDataset
 from src.loss.utils import MultipleLosses
 from src.metric.utils import SuperMetricCollection
-from src.model import EncoderOnlySegmenterPL, NaiveSegmenterPL
+
+from src.model import REGISTERED_MODELS
 
 
 log = logging.getLogger(__name__)
@@ -29,8 +30,10 @@ def setup_model(config: DictConfig):
     metric = SuperMetricCollection(
         {metric_name: metric for metric_name, metric in instantiate(config.runner.metric).items()})
     checkpointing = lambda _: instantiate(config.checkpoint)  # delayed init at rank zero only, for DDP.
-    if config.runner.model.name == 'ours':
-        model = EncoderOnlySegmenterPL(
+
+    model_class = REGISTERED_MODELS.get(config.runner.model.name)
+    if model_class is not None:
+        model = model_class(
             loss_func=loss_func,
             metrics=metric,
             model_cfg=config.runner.model,
@@ -39,19 +42,7 @@ def setup_model(config: DictConfig):
             cfg=config,
             checkpointing=checkpointing
         )
-    elif config.runner.model.name == 'naive':
-        model = NaiveSegmenterPL(
-            loss_func=loss_func,
-            metrics=metric,
-            model_cfg=config.runner.model,
-            optimizer_cfg=config.runner.optimizer,
-            scheduler_cfg=config.runner.scheduler,
-            cfg=config,
-            checkpointing=checkpointing
-        )
-        
-    else:
-        raise NotImplementedError
+    else: raise NameError(f'Unknown model name: {config.runner.model.name}')
 
     return model
 

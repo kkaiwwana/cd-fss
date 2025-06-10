@@ -16,13 +16,11 @@ class NaiveSegmenterPL(BaseSegmenter):
     """a naive toy segmenter built for test"""
 
     def setup_model(self):
-        self.model = NaiveSegmenter(
+        return NaiveSegmenter(
             backbone=self.model_cfg.backbone,
-            shot=self.cfg.experiment.n_shot,
-            n_attn_blocks=self.model_cfg.n_attn_blocks,
+            shot=self.cfg.exp.n_shot,
         )
         
-    
     def call_loss_func(self, out: List, mask_q, mask_s):
         """TO-BE-OVERRIDDEN"""
         call_ls = lambda x, y: self.loss_func(x, y)
@@ -47,13 +45,7 @@ class NaiveSegmenter(torch.nn.Module):
         super().__init__()
         self.backbone = ManualFeatureExtractor(backbone)
         self.shot = shot
-        self.attn = nn.ModuleList(
-            CrossAttnBlock(feature_dim=256) for _ in range(n_attn_blocks)
-        )
-        self.pe = torch.nn.Parameter(torch.randn(1, 4096, 256))
-        
-        self.mask_smoother = MaskSmoother(radius=7, sigma=0.3, depth=3)
-        self.classifier = torch.nn.Linear(256, 2)
+        self.temperature = 10.0
 
     def forward(
         self, 
@@ -63,28 +55,31 @@ class NaiveSegmenter(torch.nn.Module):
         mask_q: torch.Tensor,
     ) -> List[torch.tensor] | torch.Tensor:
         H, W = img_q.shape[-2:]
-
+        # from ipdb import set_trace as st
+        # st()
         # feature maps of support images, [(b, c, h, w)] * n_shot
         feature_s_list = [self.backbone(img_s) for img_s in img_s_list]
         
         # feature map of query image, (b, c, h, w)
         feature_q = self.backbone(img_q)
-        h, w = feature_q.shape[-2:]
+        # h, w = feature_q.shape[-2:]
         proto_bg, proto_fg = self.get_prototype_pair(feature_s_list, mask_s_list)
         pred_q = self.get_logits(feature_q, proto_bg, proto_fg)
         
-        proto_bg_from_q, proto_fg_from_q = self.get_prototype_pair(feature_q, pred_q.argmax(dim=1))
-        pred_s = self.get_logits(feature_s_list, proto_bg_from_q, proto_fg_from_q)
+        # proto_bg_from_q, proto_fg_from_q = self.get_prototype_pair(feature_q, pred_q.argmax(dim=1))
+        # pred_s = self.get_logits(feature_s_list, proto_bg_from_q, proto_fg_from_q)
         
-        out = [F.interpolate(pred_q, (H, W), mode='bilinear'), F.interpolate(pred_s, (H, W), mode='bilinear')]
+        out = [F.interpolate(pred_q, (H, W), mode='bilinear')]  # , F.interpolate(pred_s, (H, W), mode='bilinear')]
         return out
 
     def get_logits(self, features, proto_bg, proto_fg):
+        # assert False, f'{features[0].shape, proto_bg.shape}'
         if isinstance(features, (list, tuple)):            
-            return torch.cat(
+            return self.temperature * torch.cat(
                 [torch.stack([self.cos_sim(proto_bg, f), self.cos_sim(proto_fg, f)], dim=1) for f in features], dim=0)
         else:
-            return torch.stack([self.cos_sim(proto_bg, features), self.cos_sim(proto_fg, features)], dim=1)
+            return self.temperature * torch.stack(
+                [self.cos_sim(proto_bg, features), self.cos_sim(proto_fg, features)], dim=1)
     
     def get_prototype_pair(
         self, 
@@ -109,10 +104,9 @@ class NaiveSegmenter(torch.nn.Module):
         
         else:
             return _process_one_pair(features, masks)
-
         
     def masked_average_pooling(self, x, mask):
-        return ((x * mask).sum(dim=(-1, -2), keepdim=True) / (mask.sum(dim=(-1, -2))+ 10e-5))
+        return ((x * mask).sum(dim=(-1, -2), keepdim=True) / (mask.sum(dim=(-1, -2), keepdim=True)+ 10e-5))
     
     def cos_sim(self, x, y):
         # x: (b c 1 1), y: (b c h w)

@@ -12,6 +12,7 @@ __pycache__/
 *.tar[.gz]
 *.py[cod]
 wandb_api_key.txt
+swanlab_api_key.txt
 dev.ipynb
 
 *.ipynb

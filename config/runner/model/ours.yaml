@@ -4,8 +4,8 @@ backbone:
   _target_: src.model.module.manual_extractor.ManualFeatureExtractor
   name: sam_vit_b
   froze_depth: 2
-  use_axial_attn: True
-  use_selector: True
+  use_axial_attn: False
+  use_selector: False
 
   selector_config:
     k: 24
