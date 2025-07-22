@@ -83,7 +83,7 @@ class BaseSegmenter(pl.LightningModule):
         
         self.metrics_list[0].update(out_ls[0], mask_q, query_image=img_q, stage='train')
     
-        if self.trainer is not None:
+        if self._trainer is not None:
             self._log_step_metrics(total_loss, loss_dict, prefix='train')
 
         return total_loss
@@ -103,7 +103,7 @@ class BaseSegmenter(pl.LightningModule):
         
         self.metrics_list[dataloader_idx].update(out_ls[0], mask_q, query_image=img_q, stage='val')
         
-        if self.trainer is not None:
+        if self._trainer is None:
             self._log_step_metrics(total_loss, loss_dict, prefix='val', dataloader_idx=dataloader_idx)
             
         return {'losses': total_loss}

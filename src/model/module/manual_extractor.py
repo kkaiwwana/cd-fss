@@ -118,7 +118,6 @@ class SamVitEncoder(torch.nn.Module):
                         row_selector_config=row_selector_config,
                         selector_config=selector_config,
                     )
-                    self.inherit_weight(v, axial_attn)
                     encoder = set_children_layer(encoder, name, axial_attn)
                     # encoder = set_children_layer(encoder, name, torch.nn.Identity())
         

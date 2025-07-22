@@ -27,8 +27,9 @@ class EncoderOnlySegmenterPL(BaseSegmenter):
         if len(out) > 1:
             l0, d0 = call_ls(out[0], mask_q)
             l1, d1 = call_ls(out[1], mask_s)
+            l3 = out[2]
             
-            total_loss = l0 + l1
+            total_loss = l0 + 0.3 * l1 + l3
             loss_dict = sum_dict((d0, d1), (1, 0.3))
         else:
             total_loss, loss_dict = call_ls(out[0], mask_q)
@@ -37,11 +38,10 @@ class EncoderOnlySegmenterPL(BaseSegmenter):
 
 
 class EncoderOnlySegmenter(torch.nn.Module):
-    def __init__(self, backbone, shot=1,**kwargs):
+    def __init__(self, backbone, shot=1, **kwargs):
         super().__init__()
         
         self.backbone = backbone
-        self.refine = True
         self.shot = shot
         self.temp = 10.0
 
@@ -57,12 +57,11 @@ class EncoderOnlySegmenter(torch.nn.Module):
         feature_s_list = []
         for img_s in img_s_list:
             feature_s_list.append(self.backbone(img_s))
-        # feature_s_ls = torch.cat(feature_s_list, dim=0)
         feature_q = self.backbone(img_q)
         
         if self.training:
-            out_q, out_s = self.meta_forward(feature_s_list, mask_s_list, feature_q, mask_q)
-            return [out_q, out_s]
+            out_q, out_s, proto_loss = self.meta_forward(feature_s_list, mask_s_list, feature_q, mask_q)
+            return [out_q, out_s, proto_loss]
         else:
             out_q = self.meta_forward(feature_s_list, mask_s_list, feature_q, mask_q)
             return [out_q]
@@ -79,11 +78,9 @@ class EncoderOnlySegmenter(torch.nn.Module):
         out_query, out_support =  [], []
 
         if self.training:
-            q_out, q_out_ssp, s_out, new_FP, new_BP = self.iter_BFP(proto_fg_s, proto_bg_s, feature_s_ls, feature_q, self.refine)
+            q_out, q_out_ssp, s_out, new_FP, new_BP = self.iter_BFP(proto_fg_s, proto_bg_s, feature_s_ls, feature_q)
             
             loss = 0.3 * (2 - self.cos_sim(new_FP, proto_fg_s).mean() - self.cos_sim(new_BP, proto_bg_s).mean())
-            
-            loss.backward(retain_graph=True)
             
             self_out = self.get_logits(feature_q, proto_bg_q, proto_fg_q)     
             supp_out = self.get_logits(feature_s_list, proto_bg_s, proto_fg_s)
@@ -95,10 +92,10 @@ class EncoderOnlySegmenter(torch.nn.Module):
             out_support.append(upsample(s_out) * 0.6)
             out_support.append(upsample(supp_out) * 0.4)
             
-            return sum(out_query), sum(out_support)
+            return sum(out_query), sum(out_support), loss
         
         else:
-            q_out, q_out_ssp = self.iter_BFP(proto_fg_s, proto_bg_s, feature_s_ls, feature_q, self.refine)
+            q_out, q_out_ssp = self.iter_BFP(proto_fg_s, proto_bg_s, feature_s_ls, feature_q)
             out_query.append(upsample(q_out) * 0.4)
             out_query.append(upsample(q_out_ssp) * 0.6)
 
@@ -143,7 +140,7 @@ class EncoderOnlySegmenter(torch.nn.Module):
         # x: (b c 1 1), y: (b c h w)
         return einsum(F.normalize(x, dim=1), F.normalize(y, dim=1), 'b c h w, b c h w -> b h w')
     
-    def iter_BFP(self, FP, BP, feature_s_ls, feature_q, refine=True):
+    def iter_BFP(self, FP, BP, feature_s_ls, feature_q):
         ###### input FP and BP are support prototype
         ###### SSP on query side
         ### find the most similar part in query feature

@@ -2,7 +2,9 @@ r""" Dataloader builder for few-shot semantic segmentation dataset  """
 import torch
 import pytorch_lightning as pl
 
+from typing import *
 from copy import deepcopy
+from tensordict import TensorDict
 from hydra.main import DictConfig
 from torch.utils.data import DataLoader
 
@@ -54,25 +56,54 @@ class FSSDataset(pl.LightningDataModule):
         if 'train_shuffle' in self.loader_config.keys():
             self.train_shuffle = self.loader_config.train_shuffle
 
+    @staticmethod
+    def collate_fn_4_tensordict(data_batch: Iterable[TensorDict]):
+        out = TensorDict()
+        keys = data_batch[0].keys()
+        for key in keys:
+            out[key]= torch.stack([data[key] for data in data_batch])
+        return out
+    
     def train_dataloader(self):
         assert self.train_set is not None
         # split massive train epoch to multiple subsets.
         if self.batch_sampler is not None:
-            loader = DataLoader(self.train_set, **self.loader_config.train_loader_params, sampler=self.batch_sampler)
+            loader = DataLoader(
+                self.train_set, 
+                **self.loader_config.train_loader_params, 
+                sampler=self.batch_sampler, 
+                collate_fn=FSSDataset.collate_fn_4_tensordict
+            )
         else:
-            loader = DataLoader(self.train_set, **self.loader_config.train_loader_params, shuffle=self.train_shuffle)
+            loader = DataLoader(
+                self.train_set, 
+                **self.loader_config.train_loader_params, 
+                shuffle=self.train_shuffle,
+                collate_fn=FSSDataset.collate_fn_4_tensordict
+            )
         
         return loader
 
     def val_dataloader(self):
         assert self.val_set is not None
         val_loaders = [
-            DataLoader(self.val_set, **self.loader_config.val_loader_params, shuffle=False), 
-            DataLoader(self.val_set2, **self.loader_config.val_loader_params, shuffle=False)
+            DataLoader(
+                self.val_set, 
+                **self.loader_config.val_loader_params, 
+                shuffle=False, 
+                collate_fn=FSSDataset.collate_fn_4_tensordict
+            ), 
+            DataLoader(
+                self.val_set2, 
+                **self.loader_config.val_loader_params, 
+                shuffle=False, 
+                collate_fn=FSSDataset.collate_fn_4_tensordict
+            )
         ]
         return val_loaders
             
 
     def test_dataloader(self):
         assert self.test_set is not None
-        return DataLoader(self.test_set, **self.loader_config, shuffle=False)
+        return DataLoader(
+            self.test_set, **self.loader_config, shuffle=False, collate_fn=FSSDataset.collate_fn_4_tensordict)

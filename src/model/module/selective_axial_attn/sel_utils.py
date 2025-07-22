@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class NoisyTopKSelector(nn.Module):
+class GumbelTopKSelector(nn.Module):
     def __init__(self, 
             feature_dim, k, 
             soft=True, 
@@ -51,13 +51,13 @@ class NoisyTopKSelector(nn.Module):
         batch_size, seq_len, feature_dim = x.shape
         scores = self.scorer(x).squeeze(-1)  # (b, l)
 
-        if self.noise_std > 0:
+        if self.noise_std > 0 and self.training:
             noise = torch.randn_like(scores) * self.noise_std
             noisy_scores = scores + noise
         else:
             noisy_scores = scores
 
-        if self.soft or self.use_gumbel:
+        if (self.soft or self.use_gumbel) and self.training:
             probs = (noisy_scores / self.tau).softmax(dim=-1)
             if self.use_gumbel:
                 gumbel_noise = self.sample_gumbel(noisy_scores.shape)

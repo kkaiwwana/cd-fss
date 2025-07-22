@@ -3,7 +3,7 @@ import logging
 from torch import nn
 from einops import rearrange
 from operator import itemgetter
-from .sel_utils import NoisyTopKSelector
+from .sel_utils import GumbelTopKSelector
 
 log = logging.getLogger(__name__)
 
@@ -161,9 +161,12 @@ class SelectiveSelfAttention(torch.nn.Module):
         self.selector = selector
         self.row_selector = row_selector
     
-    def forward(self, x, merged_axis=None):      
+    def forward(self, x, merged_axis=None):
         if self.row_selector is None:
-            x_sel_in, idx_in = self.selector(x)  # '(b k) k d'
+            x_sel_in, idx_in, probs_out = self.selector(x)  # '(b k) k d'
+            if probs_out is not None and self.training:
+                # probs_out with shape (b, i)
+                x = x - probs_out[..., None].detach() + probs_out[..., None]
             x_sel_in = self.attn(x_sel_in)
             x = x.scatter(dim=1, index=idx_in, src=x_sel_in)
             return x
@@ -234,8 +237,8 @@ class AxialAttention(nn.Module):
                     permutation,
                     SelectiveSelfAttention(
                         attn=SelfAttention(dim, heads, dim_heads), 
-                        selector=NoisyTopKSelector(feature_dim=dim, **selector_config) if selector_config else None,
-                        row_selector=NoisyTopKSelector(feature_dim=dim, **row_selector_config) if row_selector_config else None,
+                        selector=GumbelTopKSelector(feature_dim=dim, **selector_config) if selector_config else None,
+                        row_selector=GumbelTopKSelector(feature_dim=dim, **row_selector_config) if row_selector_config else None,
                     )
                 ))
                 

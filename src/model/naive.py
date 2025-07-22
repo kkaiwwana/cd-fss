@@ -111,27 +111,3 @@ class NaiveSegmenter(torch.nn.Module):
     def cos_sim(self, x, y):
         # x: (b c 1 1), y: (b c h w)
         return einsum(F.normalize(x, dim=1), F.normalize(y, dim=1), 'b c h w, b c h w -> b h w')
-    
-    
-
-# pred_q, pred_s = [], []
-# for feature_s, mask_s in zip(feature_s_list, mask_s_list):
-#     q, v = rearrange(feature_s, 'b c h w -> b (h w) c'), rearrange(feature_q, 'b c h w -> b (h w) c')
-    
-#     k = F.interpolate(mask_s[:, None].float(), (h, w), mode='bilinear')  # (b, 1, h, w)
-#     k = rearrange(k, 'b c h w -> b (h w) c').repeat(1, 1, 256)
-#     p = self.masked_average_pooling(q, k)
-#     for attn in self.attn:
-#         v = attn(q, p, v, self.pe)
-#         q = attn(v, p, q, self.pe)
-        
-#     pred_q.append(v)
-#     pred_s.append(q)
-
-# pred_q = self.classifier(sum(pred_q) / len(pred_q))
-# pred_s = self.classifier(sum(pred_s) / len(pred_s))
-
-# pred_q = rearrange(pred_q, 'b (h w) c -> b c h w', h=h)
-# pred_s = rearrange(pred_s, 'b (h w) c -> b c h w', h=h)
-# print(pred_q.max(), pred_q.min(), pred_q[0, :, :5, :5])
-# return [F.interpolate(pred_q, (H, W), mode='bilinear'), F.interpolate(pred_s, (H, W), mode='bilinear')]

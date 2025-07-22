@@ -5,7 +5,7 @@ backbone:
   name: sam_vit_b
   froze_depth: 2
   use_axial_attn: False
-  use_selector: False
+  use_selector: True
 
   selector_config:
     k: 24

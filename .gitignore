@@ -2,6 +2,7 @@ datasets
 weights
 logs
 outputs
+TestOut
 .idea
 .ipynb_checkpoints
 __pycache__/
@@ -11,6 +12,11 @@ __pycache__/
 *.zip
 *.tar[.gz]
 *.py[cod]
+*.pt
+*.wav
+*.mp4
+*.tar.gz
+
 wandb_api_key.txt
 swanlab_api_key.txt
 dev.ipynb
